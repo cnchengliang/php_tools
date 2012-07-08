@@ -10,15 +10,33 @@
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
-function savetoftp_create_directories($everything) {
+function savetoftp_create_directories($everything,$ftp_server,$ftp_direct) {
   $folders = array();
-  $export_folder = '/savetoftp';
-  $export_path = $_SERVER['DOCUMENT_ROOT'] . base_path() . file_directory_path() . $export_folder;
-  // First delete existing directory to avoid build-up
-  if(is_dir($export_path)) {
-    file_unmanaged_delete_recursive($export_path);
+  $export_folder = '/savetoftp';  
+  if($ftp_server == '127.0.0.1')
+  {
+  	$path = variable_get('savetoftp_path', '');
+  	$export_path = $path.'/test';
+    $ftp_directory_array = explode('/', $ftp_direct);
+	for ($i=0,$n=count($ftp_directory_array)-1;$i<$n;$i++) {
+      $fd = $ftp_directory_array[$i];
+	  if(!empty($fd) && !is_dir($path.'/'.$fd)) {
+	  	mkdir($path.'/'.$fd);	  	
+	  }
+	  if(!empty($fd))
+	  {
+	  	$path .= '/'.$fd;
+	  }
+	}
+  }else 
+  {
+  	$export_path = $_SERVER['DOCUMENT_ROOT'] . base_path() . file_directory_path() . $export_folder;
+	  // First delete existing directory to avoid build-up
+	  if(is_dir($export_path)) {
+	    file_unmanaged_delete_recursive($export_path);
+	  }
+	  mkdir($export_path);
   }
-  mkdir($export_path);
 }
 
 /**
@@ -28,7 +46,7 @@ function savetoftp_create_directories($everything) {
  * @param $anon boolean Set to true if want html as if viewed anonymously
  * @return $file_place string Location of the locally saved html file
  */
-function savetoftp_data_process($everything, $links, $anon) {
+function savetoftp_data_process($everything, $links, $anon, $ftp_server, $ftp_direct) {
   $node = menu_get_object();
   $html_name_array = explode("/", drupal_get_path_alias('node/' . $node->nid));
   $html_name = end($html_name_array);
@@ -41,6 +59,7 @@ function savetoftp_data_process($everything, $links, $anon) {
   $html_headers = array();
   if (!$anon) {
     $cookie_headers = $_COOKIE;
+    $html_headers['Cookie'] = '';//add 2012 0708 by cnchengliang
     foreach ($cookie_headers as $key => $value) {
       $html_headers['Cookie'] = $html_headers['Cookie'] . $key . '=' . $value . '; ';
     }
@@ -94,8 +113,11 @@ function savetoftp_data_process($everything, $links, $anon) {
     htmlqp($html_fixed, 'script')->each('savetoftp_qp_base_src');
     htmlqp($html_fixed, 'img')->each('savetoftp_qp_base_src');
     $html_fixed = $html_fixed->html();
-    // Call function to copy all files over
-    $result = savetoftp_copy_files($files);
+    if($ftp_server != '127.0.0.1')
+    {
+      // Call function to copy all files over
+      $result = savetoftp_copy_files($files);
+    }
   }
   elseif ($links) {
     $name = 'http://' . $_SERVER['SERVER_NAME'];
@@ -105,8 +127,18 @@ function savetoftp_data_process($everything, $links, $anon) {
     $pattern_js_and_images = '/src=\"/';
     $new_pattern_js_and_images = 'src="' . $name;
     $html_fixed = preg_replace($pattern_js_and_images, $new_pattern_js_and_images, $html_original);
+  }  
+  
+  if($ftp_server == '127.0.0.1')
+  {
+  	$file_place = variable_get('savetoftp_path', '').$ftp_direct;
+  	if(empty($html_fixed)) 
+  	  $html_fixed = $html_original;
+  }else 
+  {
+  	$file_place = file_directory_path() . '/savetoftp/' . $html_name;  	
   }
-  $file_place = file_directory_path() . '/savetoftp/' . $html_name;
+
   $file = fopen($file_place, "w");
   if (!fwrite($file, $html_fixed)) {
     drupal_set_message(t('Unable to save the html file locally at @file_place. Check your files settings.', array('@file_place' => $file_place)));

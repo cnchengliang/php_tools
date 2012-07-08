@@ -46,19 +46,25 @@ function savetoftp_permission() {
  */
 
 function savetoftp_publish_form_submit($form, &$form_state) {
+  $ftp_server = $form_state['values']['ftp_server'];
+  $ftp_direct = $form_state['values']['ftp_direct'];
+
   $node = menu_get_object();
   $path = drupal_lookup_path('alias', 'node/' . $node->nid);
-  savetoftp_create_directories($form_state['values']['ftp_all']);
-  $file_place = savetoftp_data_process($form_state['values']['ftp_all'], $form_state['values']['ftp_links'], $form_state['values']['ftp_anon']);
-  $html_name_array = explode('/', $path);
-  $html_name = end($html_name_array);
-  $remote_file = check_plain(str_replace(" ", "", $html_name));
-  $fp = savetoftp_ftp_connect($form_state);
-  if (!ftp_put($fp, $remote_file, $file_place, FTP_BINARY)) {
-    drupal_set_message(t('Was unable to put the @remote_file on the server.', array('@remote_file' => $remote_file)));
+  savetoftp_create_directories($form_state['values']['ftp_all'],$ftp_server,$ftp_direct);
+  $file_place = savetoftp_data_process($form_state['values']['ftp_all'], $form_state['values']['ftp_links'], $form_state['values']['ftp_anon'],$ftp_server,$ftp_direct);
+  if($ftp_server != '127.0.0.1')
+  {
+	  $html_name_array = explode('/', $path);
+	  $html_name = end($html_name_array);
+	  $remote_file = check_plain(str_replace(" ", "", $html_name));
+	  $fp = savetoftp_ftp_connect($form_state);
+	  if (!ftp_put($fp, $remote_file, $file_place, FTP_BINARY)) {
+	    drupal_set_message(t('Was unable to put the @remote_file on the server.', array('@remote_file' => $remote_file)));
+	  }
+	  savetoftp_ftp_files($fp, $remote_file, $file_place, $form_state['values']['ftp_all']);
+	  ftp_close($fp);
   }
-  savetoftp_ftp_files($fp, $remote_file, $file_place, $form_state['values']['ftp_all']);
-  ftp_close($fp);
   drupal_goto('node/' . $node->nid);
 }
 

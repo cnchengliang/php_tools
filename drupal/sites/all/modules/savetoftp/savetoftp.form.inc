@@ -49,7 +49,7 @@ function savetoftp_publish_form() {
   $form['ftp_direct'] = array(
     '#type' => 'textfield',
     '#default_value' => check_plain(variable_get('ftp_directory', $save_to_ftp_path)),
-    '#maxlength' => 50,
+    '#maxlength' => 150,
     '#size' => 20,
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
@@ -189,6 +189,12 @@ function savetoftp_admin_settings($form, &$form_state) {
     '#title' => t('Date'),
     '#description' => t('If checked, this will add a Last updated date at the bottom of the page'),
     '#default_value' => variable_get('savetoftp_date', '0'),
+  );
+  $form['savetoftp_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Path'),
+    '#description' => t('Local Path'),
+    '#default_value' => variable_get('savetoftp_path', ''),
   );
   return system_settings_form($form);
 }
