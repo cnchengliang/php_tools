@@ -96,6 +96,13 @@ function node_filters() {
     ) + node_type_get_names(),
   );
 
+  $filters['tid'] = array(
+    'title' => t('term'),
+    'options' => array(
+      '[any]' => t('any'),
+    ) + get_term_names(),
+  );
+
   // Language filter if there is a list of languages
   if ($languages = module_invoke('locale', 'language_list')) {
     $languages = array(LANGUAGE_NONE => t('Language neutral')) + $languages;
@@ -127,6 +134,10 @@ function node_build_filter_query(SelectQueryInterface $query) {
       case 'type':
       case 'language':
         $query->condition('n.' . $key, $value);
+        break;
+      case 'tid':
+      	$nids = get_nodeid_by_termname($value);
+        $query->condition('n.nid', $nids, 'IN');
         break;
     }
   }

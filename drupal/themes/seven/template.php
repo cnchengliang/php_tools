@@ -113,3 +113,30 @@ function seven_css_alter(&$css) {
     $css['misc/ui/jquery.ui.theme.css']['data'] = drupal_get_path('theme', 'seven') . '/jquery.ui.theme.css';
   }
 }
+
+
+function get_nodeid_by_termname($name) {
+    $result = array(0);
+	$query = db_select('taxonomy_term_data', 't');
+	$query->join('taxonomy_index', 'd', 'd.tid = t.tid');
+	$query->addField('d','nid');
+	$query->condition('t.name', $name);
+
+ 	$result = $query->execute()->fetchCol();
+ 	if(empty($result)) $result = array(0);
+	return $result;
+}
+
+
+function get_term_names()
+{
+	$result = array();
+	$query = db_select('taxonomy_term_data', 't')
+	->fields('t')
+    ->orderBy('t.weight', 'ASC');
+
+ 	foreach ($query->execute() as $term_object) {
+ 		$result[$term_object->name] = $term_object->description;
+ 	}
+	return $result;
+}
