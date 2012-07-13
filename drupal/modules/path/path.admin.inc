@@ -19,12 +19,12 @@ function path_admin_overview($keys = NULL) {
   $multilanguage = (module_exists('locale') || $alias_exists);
 
   $header = array();
-  $header[] = array('data' => t('Alias'), 'field' => 'alias', 'sort' => 'asc');
-  $header[] = array('data' => t('System'), 'field' => 'source');
+  $header['alias'] = array('data' => t('Alias'), 'field' => 'alias', 'sort' => 'asc');
+  $header['source'] = array('data' => t('System'), 'field' => 'source');
   if ($multilanguage) {
-    $header[] = array('data' => t('Language'), 'field' => 'language');
+    $header['language'] = array('data' => t('Language'), 'field' => 'language');
   }
-  $header[] = array('data' => t('Operations'));
+  $header['operations'] = array('data' => t('Operations'));
 
   $query = db_select('url_alias')->extend('PagerDefault')->extend('TableSort');
   if ($keys) {
@@ -36,15 +36,14 @@ function path_admin_overview($keys = NULL) {
     ->orderByHeader($header)
     ->limit(50)
     ->execute();
-
   $rows = array();
   $destination = drupal_get_destination();
   foreach ($result as $data) {
     $row = array();
-    $row['data']['alias'] = l($data->alias, $data->source);
-    $row['data']['source'] = l($data->source, $data->source, array('alias' => TRUE));
+    $row['alias'] = l($data->alias, $data->source);
+    $row['source'] = l($data->source, $data->source, array('alias' => TRUE));
     if ($multilanguage) {
-      $row['data']['language'] = module_invoke('locale', 'language_name', $data->language);
+      $row['language'] = module_invoke('locale', 'language_name', $data->language);
     }
 
     $operations = array();
@@ -58,7 +57,7 @@ function path_admin_overview($keys = NULL) {
       'href' => "admin/config/search/path/delete/$data->pid",
       'query' => $destination,
     );
-    $row['data']['operations'] = array(
+    $row['operations'] = array(
       'data' => array(
         '#theme' => 'links',
         '#links' => $operations,
@@ -72,16 +71,18 @@ function path_admin_overview($keys = NULL) {
       $row['class'] = array('warning');
     }
 
-    $rows[] = $row;
+    //id对应值
+    $rows[$data->pid] = $row;
   }
 
   $build['path_table'] = array(
-    '#theme' => 'table',
+    '#type' => 'tableselect',//带checkbox的表格
     '#header' => $header,
-    '#rows' => $rows,
+    '#options' => $rows,
     '#empty' => t('No URL aliases available. <a href="@link">Add URL alias</a>.', array('@link' => url('admin/config/search/path/add'))),
   );
-  $build['path_pager'] = array('#theme' => 'pager');
+  $build['pager'] = array('#value' => theme('pager'));
+  
 
   return $build;
 }

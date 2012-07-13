@@ -52,10 +52,12 @@ function path_permission() {
  * Implements hook_menu().
  */
 function path_menu() {
+  //更新page callback和arguments时注意要同步数据库中的数据,在module中心关闭后开启即可同步
   $items['admin/config/search/path'] = array(
     'title' => 'URL aliases',
     'description' => "Change your site's URL paths by aliasing them.",
-    'page callback' => 'path_admin_overview',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('path_admin_overview'),
     'access arguments' => array('administer url aliases'),
     'weight' => -5,
     'file' => 'path.admin.inc',
