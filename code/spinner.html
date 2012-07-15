@@ -1,0 +1,55 @@
+<html>
+<head>
+<style>
+html {
+	font: 100%/1.5 Lato, Helvetica Neue, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+	min-height: 100%;
+	text-align: center;
+	position: relative;
+}
+
+.loader {
+	display: block;
+ 	width: 10px;
+ 	height: 10px;
+ 	position: relative;
+ 	border: 3px solid;
+  border-right-color: transparent;
+ 	border-radius: 50%;
+ 	animation: spin 1s infinite linear;
+  color: #555; /* Just set the color once - here! The whole arrow will get it. */
+  background-color: transparent;
+ }
+ 
+ 	.loader:after {
+ 		content:'';
+ 		width: 0;
+ 		height: 0;
+ 		display: block;
+ 		position: absolute;
+ 		top: -50%;
+ 		right: -50%;
+ 		border: 4px solid transparent;
+ 		border-left-color: inherit;
+ 	}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+/* Demo styles */
+
+.demo {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin: -8px;
+}
+</style>
+<script src="prefixfree.js"></script>
+</head>
+<body>
+<i class="loader demo"></i>
+</body>
+</html>
