@@ -6,6 +6,45 @@
  */
 
 /**
+ * Menu callback: path administration.
+ */
+function path_admin_content($form, $form_state, $keys = NULL) {
+
+  $form['filter'] = path_admin_filter_form($form, $form_state,$keys);
+  
+  // Build the 'Update options' form.
+  $form['options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Update options'),
+    '#attributes' => array('class' => array('container-inline')),
+  );
+  
+  $options = array();
+  foreach (module_invoke_all('path_operations') as $operation => $array) {
+    $options[$operation] = $array['label'];
+  }
+  $form['options']['operation'] = array(
+    '#type' => 'select',
+    '#title' => t('Operation'),
+    '#title_display' => 'invisible',
+    '#options' => $options,
+    '#default_value' => 'approve',
+  );
+  
+  $form['options']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update'),
+    '#validate' => array('path_admin_form_update_validate'),
+    '#submit' => array('path_admin_form_update_submit'),
+  );
+  
+  //$form['#submit'][] = 'path_admin_filter_form_submit';
+  $form['admin'] = path_admin_overview($keys);
+
+  return $form;
+}
+
+/**
  * Returns a listing of all defined URL aliases.
  *
  * When filter key passed, perform a standard search on the given key,
@@ -13,12 +52,15 @@
  */
 function path_admin_overview($keys = NULL) {
   // Add the filter form above the overview table.
-  $build['path_admin_filter_form'] = drupal_get_form('path_admin_filter_form', $keys);
+  //$build['path_admin_filter_form'] = drupal_get_form('path_admin_filter_form', $keys);
+  
+  
   // Enable language column if locale is enabled or if we have any alias with language
   $alias_exists = (bool) db_query_range('SELECT 1 FROM {url_alias} WHERE language <> :language', 0, 1, array(':language' => LANGUAGE_NONE))->fetchField();
   $multilanguage = (module_exists('locale') || $alias_exists);
 
   $header = array();
+
   $header['alias'] = array('data' => t('Alias'), 'field' => 'alias', 'sort' => 'asc');
   $header['source'] = array('data' => t('System'), 'field' => 'source');
   if ($multilanguage) {
@@ -36,14 +78,16 @@ function path_admin_overview($keys = NULL) {
     ->orderByHeader($header)
     ->limit(50)
     ->execute();
+
   $rows = array();
   $destination = drupal_get_destination();
   foreach ($result as $data) {
     $row = array();
-    $row['alias'] = l($data->alias, $data->source);
-    $row['source'] = l($data->source, $data->source, array('alias' => TRUE));
+
+    $row['alias']['data'] = l($data->alias, $data->source);
+    $row['source']['data'] = l($data->source, $data->source, array('alias' => TRUE));
     if ($multilanguage) {
-      $row['language'] = module_invoke('locale', 'language_name', $data->language);
+      $row['language']['data'] = module_invoke('locale', 'language_name', $data->language);
     }
 
     $operations = array();
@@ -57,7 +101,7 @@ function path_admin_overview($keys = NULL) {
       'href' => "admin/config/search/path/delete/$data->pid",
       'query' => $destination,
     );
-    $row['operations'] = array(
+    $row['operations']['data'] = array(
       'data' => array(
         '#theme' => 'links',
         '#links' => $operations,
@@ -71,18 +115,16 @@ function path_admin_overview($keys = NULL) {
       $row['class'] = array('warning');
     }
 
-    //id对应值
     $rows[$data->pid] = $row;
   }
 
-  $build['path_table'] = array(
-    '#type' => 'tableselect',//带checkbox的表格
+  $build['pathes'] = array(
+    '#type' => 'tableselect',
     '#header' => $header,
     '#options' => $rows,
     '#empty' => t('No URL aliases available. <a href="@link">Add URL alias</a>.', array('@link' => url('admin/config/search/path/add'))),
   );
-  $build['pager'] = array('#value' => theme('pager'));
-  
+  $build['path_pager'] = array('#theme' => 'pager');
 
   return $build;
 }
@@ -293,6 +335,7 @@ function path_admin_filter_form($form, &$form_state, $keys = '') {
       '#submit' => array('path_admin_filter_form_submit_reset'),
     );
   }
+  
   return $form;
 }
 
@@ -312,4 +355,31 @@ function path_admin_filter_form_submit_filter($form, &$form_state) {
  */
 function path_admin_filter_form_submit_reset($form, &$form_state) {
   $form_state['redirect'] = 'admin/config/search/path/list';
+}
+
+/**
+ * Implements hook_path_operations().
+ */
+function path_path_operations() {
+  $operations = array(
+    'publish' => array(
+      'label' => t('Publish selected content'),
+    ),
+  );
+  return $operations;
+}
+
+function path_admin_form_update_validate($form, &$form_state) {
+	if (!is_array($form_state['values']['pathes']) || !count(array_filter($form_state['values']['pathes']))) {
+		form_set_error('', t('No items selected.'));
+	}
+}
+
+function path_admin_form_update_submit($form, &$form_state) {
+  $pathes = array_filter($form_state['values']['pathes']);
+
+  //path_save($form_state['values']);
+
+  //drupal_set_message(t('The alias has been saved.'));
+  $form_state['redirect'] = 'admin/config/search/path';
 }
