@@ -378,8 +378,114 @@ function path_admin_form_update_validate($form, &$form_state) {
 function path_admin_form_update_submit($form, &$form_state) {
   $pathes = array_filter($form_state['values']['pathes']);
 
+  if(count($pathes) > 0)
+  {
+  	$query = db_select('url_alias');
+  	$query->condition('pid', $pathes, 'IN');
+  	$result = $query
+  	  ->fields('url_alias')
+  	  ->execute();
+  	foreach ($result as $data) {
+  		exporthtml_data_process($data->source);
+  	}
+    exit();
+  }
   //path_save($form_state['values']);
 
   //drupal_set_message(t('The alias has been saved.'));
   $form_state['redirect'] = 'admin/config/search/path';
+}
+
+function exporthtml_data_process($source) {
+	$stage_site = url($source, array('absolute' => TRUE));
+	
+    $html_headers['Cookie'] = '';
+    
+    $html_piece = drupal_http_request($stage_site, array('headers' => $html_headers));
+    if (!$html_piece->data) {
+      drupal_set_message(t('There was a problem getting the Drupal page html'), 'error');
+    }
+    $html_original = $html_piece->data;
+
+    $files = array();
+    // Use QueryPath to find the files we need
+    $qp_links = htmlqp($html_original, 'link');
+    $qp_javascripts = htmlqp($html_original, 'script');
+    $qp_images = htmlqp($html_original, 'img');
+    
+	foreach($qp_links as $qp_link) {
+      if($qp_link->attr('rel') == 'stylesheet') {
+        $files[] = parse_url($qp_link->attr('href'), PHP_URL_PATH);
+      }
+    }
+    foreach($qp_javascripts as $qp_js) {
+      if($qp_js->attr('src') != NULL) {
+        $files[] = parse_url($qp_js->attr('src'), PHP_URL_PATH);
+      }
+    }
+    foreach($qp_images as $qp_img) {
+      if($qp_img->attr('src') != NULL) {
+        $files[] = parse_url($qp_img->attr('src'), PHP_URL_PATH);
+      }
+    }
+    
+    $html_fixed = @qp($html_original, array('ignore_parser_warnings' => TRUE));
+    // Make all css, js, and image paths relative in the HTML 
+    htmlqp($html_fixed, 'link')->each('exporthtml_qp_base_href');
+    htmlqp($html_fixed, 'script')->each('exporthtml_qp_base_src');
+    htmlqp($html_fixed, 'img')->each('exporthtml_qp_base_src');
+    $html_fixed = $html_fixed->html();   
+    
+    $html_name_array = explode("/", $stage_site);
+  	$html_name = end($html_name_array);
+  	$html_name = check_plain(str_replace(" ", "", $html_name));
+  	
+  	$old_base_url = 'http://127.0.0.1/php_tools/drupal/';
+  	$rel_path = str_replace($old_base_url,"",str_replace('/'.$html_name, "", $stage_site));
+  	
+  	$new_base_path = '/data0/htdocs/www/test';  	
+    
+  	//建立目录
+  	if(!file_exists($new_base_path.'/'.$rel_path) && !mkdir($new_base_path.'/'.$rel_path,0777,TRUE))
+  	{
+  		drupal_set_message(t('Unable to mkdir. Check your files settings.', array('@file_place' => $file_place)));
+  	}
+  	
+    $file_place = $new_base_path.'/'.$rel_path.'/'.$html_name;    
+    
+    //写入文件
+    $file = fopen($file_place, "w");
+	if (!fwrite($file, $html_fixed)) {
+		drupal_set_message(t('Unable to save the html file locally at @file_place. Check your files settings.', array('@file_place' => $file_place)));
+	}
+	fclose($file);
+	
+	var_dump($file_place);exit();
+}
+
+
+/**
+ * Utility function for setting href to basename only
+ * @param $index int The index of the QP object
+ * @param $item object A QueryPath object
+ * @return boolean true continues the flow
+ */ 
+
+function exporthtml_qp_base_href($index, $item) {
+  $src = $item->getAttribute('href');
+  $item->setAttribute('href', basename($src));
+  return TRUE; 
+}
+
+/**
+ * Utility function for setting src to basename only
+ * @param $index int The index of the QP object
+ * @param $item object A QueryPath object
+ * @return boolean true continues the flow
+ */ 
+
+function exporthtml_qp_base_src($index, $item) {
+  $src = $item->getAttribute('src');
+  $item->setAttribute('src', basename($src));
+  return TRUE; 
 }
